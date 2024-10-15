@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--<script src="jquery-3.7.1.min.js"></script>
+    <script src="jquery-ui-1.14.0/jquery-ui.js"></script>-->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+
+    <link rel="stylesheet" href="../jquery-ui-1.14.0/jquery-ui.css" />
+    <!--<link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />-->
+    <meta charset="UTF-8">
+    <title>BookCine intro</title>
+<script>
+//code
+
+</script>
+</head>
+<body>
+
+    <h2>Please rate the followig statements</h2>
+    <form id="surveyForm" action="bookcine_finish.html" method="GET">
+        <div class="survey-container" id="surveyContainer">
+            <!-- Survey items will be inserted here by jQuery -->
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        $(document).ready(function() {
+            const surveyStatements = [
+                { statement: "I am interested in the book I picked. (Accuracy)", name: "accuracy_interest" },
+                { statement: "I enjoyed the book/books recommended to me. (Enjoyability)", name: "enjoyability" },
+                { statement: "The recommender system helped me discover new books. (Novelty)", name: "novelty" },
+                { statement: "The recommender provided an adequate way for me to express my preferences. (Interaction Adequacy)", name: "interaction_express" },
+                { statement: "The recommender provided an adequate way for me to revise my preferences. (Interaction Adequacy)", name: "interaction_revise" },
+                { statement: "The recommender explained why the books were recommended to me. (Interaction Adequacy)", name: "interaction_explain" },
+                { statement: "I understood why the books were recommended to me. (Transparency)", name: "transparency" },
+                { statement: "The recommender’s interface provides sufficient information. (Interface Adequacy)", name: "interface_info" },
+                { statement: "The information provided for the recommended books is sufficient for me. (Interface Adequacy)", name: "interface_books" },
+                { statement: "I became familiar with the recommender system very quickly. (Perceived Ease of Use)", name: "ease_use" },
+                { statement: "I found it easy to tell the system about my preferences. (Ease of Preference Elicitation)", name: "ease_elicitation" },
+                { statement: "It was easy for me to get a new set of recommendations. (Ease of Preference Revision)", name: "ease_revision" },
+                { statement: "I was able to take advantage of the recommender very quickly. (Ease of Decision Making)", name: "ease_decision" },
+                { statement: "I felt in control of telling the recommender what I want. (Control)", name: "control" },
+                { statement: "Overall, I am satisfied with the recommender. (Attitudes)", name: "satisfaction" },
+                { statement: "If a recommender such as this exists, I will use it to find books to read. (Intention to Use the System)", name: "intention_use" },
+                { statement: "I liked the fact that the book was (or books were) recommended to me based on both books and movies. (Cross-domain Acceptance)", name: "cross_domain" },
+                { statement: "I came across interesting movie by accident, while searching for the book. (Serendipity)", name: "serendipity" }
+            ];
+
+            // Dynamically generate survey items
+            surveyStatements.forEach((item, index) => {
+                const surveyItem = `
+                    <div class="survey-item">
+                        <label for="${item.name}">${item.statement}</label>
+                        <div class="options">
+                            <label><input type="radio" name="${item.name}" value="1"> Strongly Disagree</label>
+                            <label><input type="radio" name="${item.name}" value="2"> Disagree</label>
+                            <label><input type="radio" name="${item.name}" value="3"> Neutral</label>
+                            <label><input type="radio" name="${item.name}" value="4"> Agree</label>
+                            <label><input type="radio" name="${item.name}" value="5"> Strongly Agree</label>
+                        </div>
+                    </div>`;
+                $('#surveyContainer').append(surveyItem);
+                $('#surveyContainer').append("<br>");
+            });
+        });
+    </script>
+
+
+
+</body>
+</html>

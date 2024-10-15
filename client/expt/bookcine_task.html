@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--<script src="jquery-3.7.1.min.js"></script>
+    <script src="jquery-ui-1.14.0/jquery-ui.js"></script>-->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+
+    <link rel="stylesheet" href="../jquery-ui-1.14.0/jquery-ui.css" />
+    <!--<link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />-->
+    <meta charset="UTF-8">
+    <title>BookCine intro</title>
+<script>
+//code
+
+</script>
+</head>
+<body>
+
+<p>On the next page, you will interact with a recommender system where you can rate movies and books and receive recommendations. Please use this system to find a book you would be interested in reading. You may spend up to 30 minutes on this task.</p>
+
+<h4>Bellow, is the instruction, which will help you to use the system.</h4>
+
+<p>In the system, you can find a book similar to a set of books or movies. The system narrows down your search intentions as you hit the following buttons:</p>
+    <button>Less like this</button> <button>More like this</button>
+
+<p>After you hit one of these buttons, the system will suggest a book or a movie to you based on the feedback you provided. You can provide your feedback as much as you want.</p>
+<p>To switch between books and movies, use the following control:</p>
+    <input type="radio" id="movies_radio" name="domain" value="movies" onchange="updateDomain('movies')" checked>
+    <label for="movies_radio">Movies</label>
+    <input type="radio" id="books_radio" name="domain" value="books" onchange="updateDomain('books')">
+    <label for="books_radio">Books</label>
+
+<p>To look for a particular book or movie, use the search field:</p>
+<span>Find: </span><input>
+
+<p>At any time, you can restart the recommendation process. For example, this might happen if you decide to look for a different kind of book, or just think that the system does not capture your tastes correctly. To restart, hit the following button:</p>
+    <button>Start Again</button>
+
+<p>At any time, you can edit the feedback you provided:</p>
+    <button >Activity History (5)</button>
+
+<p>At any time, you can also bookmark a movie or a book you found interesting and see them in the list of saved items:</p>
+    <button>Save</button><button>Saved Picks (3)</button>
+
+
+<p>If you found a book that interests you, you should hit the following button:</p>
+    <span>This is the book I would be interested in reading</span>
+    <button>Finish</button>
+
+<p>Please select all the correct statements to proceed:</p>
+
+    <form action="bookcine.html" method="GET">
+<label><input type="checkbox" name="statements" value="suggest_books_movies"> The system suggests books and movies</label><br>
+        <label><input type="checkbox" name="statements" value="spend_10_minutes"> I can spend 10 minutes to complete this task</label><br>
+        <label><input type="checkbox" name="statements" value="only_books"> The system only recommends books</label><br>
+        <label><input type="checkbox" name="statements" value="spend_1_hour"> I can spend up to 1 hour to complete this task</label><br>
+        <label><input type="checkbox" name="statements" value="recommend_after_more_like_this"> The system recommends to me the next book or movie after I hit the "More like this" button</label><br>
+        <label><input type="checkbox" name="statements" value="find_movie_interest"> I need to find a movie I would be interested in watching</label><br>
+        <label><input type="checkbox" name="statements" value="no_return_after_finish"> I cannot come back to the system after I hit the Finish button</label><br>
+        <label><input type="checkbox" name="statements" value="search_any_time"> I can look for books and movies with a search field at any time</label><br>
+        <label><input type="checkbox" name="statements" value="save_to_finish"> If I found the book I would be interested in reading and would like to finish the task, I should hit the save button</label><br>
+        <button type="submit">Submit</button>
+    </form>
+
+
+</body>
+</html>

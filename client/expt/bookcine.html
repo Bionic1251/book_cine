@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--<script src="jquery-3.7.1.min.js"></script>
+    <script src="jquery-ui-1.14.0/jquery-ui.js"></script>-->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+
+    <script type="text/javascript" src="../movie_titles.js"></script>
+    <script type="text/javascript" src="../book_titles.js"></script>
+
+    <script type="text/javascript" src="../Util.js"></script>
+    <script type="text/javascript" src="../Item.js"></script>
+
+    <link rel="stylesheet" href="../jquery-ui-1.14.0/jquery-ui.css" />
+    <!--<link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />-->
+    <meta charset="UTF-8">
+    <title>BookCine</title>
+<script>
+
+// states
+const INIT_STATE = "init";
+const RECOMMENDATION_STATE = "recommendation";
+const HISTORY_STATE = "history";
+const SAVED_STATE = "saved";
+
+// constants
+const SERVER_ADDRESS = "http://127.0.0.1:5000";
+const BOOK_DOMAIN = "books";
+const MOVIE_DOMAIN = "movies";
+const POSITIVE_WEIGHT = 1;
+const NEGATIVE_WEIGHT = -0.7;
+const MAX_DESCRIPTION_LENGTH = 200;
+const MIN_AUTOCOMPLETE_LEN = 3;
+
+// variables
+var currentState = INIT_STATE;
+var domain = MOVIE_DOMAIN;
+var item = null;
+var profileTopics = null;
+var ratings = {"movies":[], "books":[]};
+var savedItems = {"movies":[], "books":[]};
+var userVectorChanged = false;
+
+function updateDomain(val) {
+    domain = val;
+    updateSearchField();
+    if (item != null) {
+        nextItem();
+    }
+}
+
+function updateSearchField(val) {
+    if (domain == BOOK_DOMAIN) {
+        $("#movieTitles").hide();
+        $("#bookTitles").show();
+        return;
+    }
+    $("#movieTitles").show();
+    $("#bookTitles").hide();
+}
+
+$( function() {
+    updateSearchField();
+
+    var movieTitlesArray = Util.retrieveArray(MOVIE_TITLES)
+    var bookTitlesArray = Util.retrieveArray(BOOK_TITLES)
+
+    $("#movieTitles").autocomplete({
+        minLength: MIN_AUTOCOMPLETE_LEN,
+      source: movieTitlesArray
+    });
+
+    $("#bookTitles").autocomplete({
+      minLength: MIN_AUTOCOMPLETE_LEN,
+      source: bookTitlesArray
+    });
+} );
+
+function pressedKey(event) {
+    var key = event.which;
+    if (key == 13) {
+        chooseItem();
+    }
+}
+
+function chooseItem() {
+    let id = -1;
+    if (domain == BOOK_DOMAIN) {
+        let title = $("#bookTitles").val();
+        id = Util.getItemIdByTitle(title, BOOK_TITLES);
+        $("#bookTitles").val("");
+    } else {
+        let title = $("#movieTitles").val();
+        id = Util.getItemIdByTitle(title, MOVIE_TITLES);
+        $("#movieTitles").val("");
+    }
+    if (id === -1) {
+        alert("Sorry, we do not have this movie or book.")
+    } else {
+        updateItemById(id, domain);
+    }
+
+    updateState(RECOMMENDATION_STATE);
+}
+
+function addRating(item, rating) {
+    //removing item if it is already rated
+    ratings[domain] = ratings[domain].filter(item1 => item1[0].id !== item.id);
+    //adding rating
+    ratings[domain].push([item, rating]);
+}
+
+function reset() {
+    domain = MOVIE_DOMAIN;
+    item = null;
+    profileTopics = null;
+    ratings = {"movies":[], "books":[]};
+    savedItems = {"movies":[], "books":[]};
+    userVectorChanged = false;
+    updateItemInfo();
+    updateState(INIT_STATE);
+}
+
+function lessLikeThis() {
+    //ratings[domain].push([item.id, NEGATIVE_WEIGHT]);
+    addRating(item, NEGATIVE_WEIGHT)
+    nextItem();
+    updateListButtons();
+}
+
+function moreLikeThis() {
+    //ratings[domain].push([item.id, POSITIVE_WEIGHT]);
+    addRating(item, POSITIVE_WEIGHT)
+    nextItem();
+    updateListButtons();
+}
+
+function saveItem() {
+    //removing item if it is already saved
+    savedItems[domain] = savedItems[domain].filter(item1 => item1.id !== item.id);
+    //adding item
+    savedItems[domain].push(item);
+    updateListButtons();
+}
+
+function updateTitle() {
+    if (item === null) {
+        $('#title').text("");
+    } else {
+        $('#title').text(item.title);
+    }
+}
+
+function updateItemTopics() {
+    if (item === null) {
+        $('#item_topics').text("");
+    } else {
+        $('#item_topics').text(Util.arrayToString(item.topics));
+    }
+}
+
+function updateProfileTopics() {
+    if (profileTopics == null) {
+        $('#profile_topics').text("");
+        $("#profile_topcs_description").hide();
+    } else {
+        $("#profile_topcs_description").show();
+        $('#profile_topics').text(Util.arrayToString(profileTopics));
+    }
+}
+
+function updateDescription() {
+    if (item === null) {
+        $('#description').text("");
+        return;
+    }
+    var text = item.description;
+    if (text.length <= MAX_DESCRIPTION_LENGTH) {
+        $('#description').text(text);
+        return;
+    }
+
+    let truncated = text.slice(0, MAX_DESCRIPTION_LENGTH);
+    let lastSpace = truncated.lastIndexOf(' ');
+    if (lastSpace !== -1) {
+        truncated = truncated.slice(0, lastSpace);
+    }
+
+    $('#description').text(truncated + '...');
+}
+
+function updateCover() {
+    if (item === null) {
+        $('#cover').attr("src", "");
+    } else {
+        $('#cover').attr("src", item.cover);
+    }
+}
+
+function updateListButtons() {
+    var activityCount = ratings["movies"].length;
+    activityCount += ratings["books"].length;
+    $('#historyButton').text("Activity History (" + activityCount + ")");
+
+    var savedCount = savedItems["movies"].length;
+    savedCount += savedItems["books"].length;
+    $('#savedButton').text("Saved Picks (" + savedCount + ")");
+}
+
+function updateItemInfo() {
+    updateTitle();
+    updateCover();
+    updateDescription();
+
+    updateItemTopics();
+    updateProfileTopics();
+}
+
+function getRatingsForAPI(){
+    output = {"movies" : ratings["movies"].map(entry => [entry[0].id, entry[1]]),
+        "books" : ratings["books"].map(entry => [entry[0].id, entry[1]])}
+    return output;
+}
+
+function nextItem() {
+    let address = "";
+    if (domain == MOVIE_DOMAIN) {
+        address = SERVER_ADDRESS + "/movie_recs";
+    }else{
+        address = SERVER_ADDRESS + "/book_recs";
+    }
+
+    const dataToPass = JSON.stringify(getRatingsForAPI());
+
+    const successFunction = function (resp) {
+        data = jQuery.parseJSON(jQuery.parseJSON(resp))
+
+        item = new Item(domain, data['item'], data['item_topics']);
+        profileTopics = Util.retrieveArray(data['profile_topics']["tag"]);
+
+        updateItemInfo();
+        updateState(RECOMMENDATION_STATE);
+    }
+
+    Util.sendRequest(address, dataToPass, successFunction);
+}
+
+function updateItemById(id, currentDomain) {
+    let address = "";
+    if (currentDomain == MOVIE_DOMAIN) {
+        address = SERVER_ADDRESS + "/movie";
+    }else{
+        address = SERVER_ADDRESS + "/book";
+    }
+
+    const dataToPass = JSON.stringify(id);
+
+    const successFunction = function (resp) {
+        data = jQuery.parseJSON(jQuery.parseJSON(resp))
+
+        item = new Item(domain, data['item'], data['item_topics']);
+
+        updateItemInfo();
+    }
+
+    Util.sendRequest(address, dataToPass, successFunction);
+}
+
+$(document).ready(function () {
+    //nextItem();
+    updateState(INIT_STATE);
+});
+
+function makeListItem(item, type, itemDomain) {
+    var itemToDisplay = $("<div></div>");
+    itemToDisplay.append('<img src="' + item.cover + '" width="50px"><br>');
+    itemToDisplay.append("<h4>" + item.title + "</h4><br>");
+    itemToDisplay.append("<span>" + Util.arrayToString(item.topics) + "</span><br>");
+    var selectButton = $("<button>Select</button><br>");
+    selectButton.click(function(){
+        updateItemById(item.id, itemDomain);
+        seeRecs();
+    });
+    itemToDisplay.append(selectButton);
+    if (type === "history") {
+        var removeButton = $("<button>Remove</button><br>");
+        removeButton.click(function(){
+            if (itemDomain === MOVIE_DOMAIN) {
+                ratings[MOVIE_DOMAIN] = ratings[MOVIE_DOMAIN].filter(item1 => item1[0].id !== item.id);
+            } else {
+                ratings[BOOK_DOMAIN] = ratings[BOOK_DOMAIN].filter(item1 => item1[0].id !== item.id);
+            }
+            userVectorChanged = true;
+            seeHistory();
+        });
+        itemToDisplay.append(removeButton);
+    } else {
+        var removeButton = $("<button>Remove</button><br>");
+        removeButton.click(function(){
+            if (itemDomain === MOVIE_DOMAIN) {
+                savedItems[MOVIE_DOMAIN] = savedItems[MOVIE_DOMAIN].filter(item1 => item1.id !== item.id);
+            } else {
+                savedItems[BOOK_DOMAIN] = savedItems[BOOK_DOMAIN].filter(item1 => item1.id !== item.id);
+            }
+            seeSaved();
+        });
+        itemToDisplay.append(removeButton);
+    }
+    return itemToDisplay;
+}
+
+function seeHistory(){
+    $("#movieHistory").empty();
+    ratings["movies"].forEach((entry, index) => {
+        $("#movieHistory").append(makeListItem(entry[0], "history", MOVIE_DOMAIN));
+    });
+
+    $("#bookHistory").empty();
+    ratings["books"].forEach((entry, index) => {
+        $("#bookHistory").append(makeListItem(entry[0], "history", BOOK_DOMAIN));
+    });
+
+    updateState(HISTORY_STATE);
+}
+
+function seeSaved(){
+    $("#movieSaved").empty();
+    savedItems["movies"].forEach((entry, index) => {
+        $("#movieSaved").append(makeListItem(entry, "saved", MOVIE_DOMAIN));
+    });
+
+    $("#bookSaved").empty();
+    savedItems["books"].forEach((entry, index) => {
+        $("#bookSaved").append(makeListItem(entry, "saved", BOOK_DOMAIN));
+    });
+
+    updateState(SAVED_STATE);
+}
+
+function seeRecs(){
+    if (userVectorChanged && (ratings["movies"].length !== 0 || ratings["books"].length !== 0)) {
+      nextItem();
+      userVectorChanged = false;
+    } else {
+        updateState(RECOMMENDATION_STATE);
+    }
+}
+
+function updateState(state) {
+    currentState = state;
+    switch(currentState) {
+      case INIT_STATE:
+        $('#init_panel').show();
+        $('#recommendation').hide();
+        $('#history').hide();
+        $('#saved').hide();
+        $('#upper_panel').hide();
+        $('#empty_saved_message').hide();
+        $('#empty_history_message').hide();
+        $('#movie_book_switch').show();
+        $('#see_recs').hide();
+        $('#search_panel').show();
+        break;
+      case RECOMMENDATION_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').show();
+        $('#history').hide();
+        $('#saved').hide();
+        $('#upper_panel').show();
+        $('#empty_saved_message').hide();
+        $('#empty_history_message').hide();
+        $('#movie_book_switch').show();
+        $('#see_recs').hide();
+        $('#search_panel').show();
+        if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
+            $('#movies_radio').attr("disabled", true);
+            $('#books_radio').attr("disabled", true);
+        } else {
+            $('#movies_radio').attr("disabled", false);
+            $('#books_radio').attr("disabled", false);
+        }
+        break;
+      case HISTORY_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').hide();
+        $('#history').show();
+        $('#saved').hide();
+        $('#upper_panel').show();
+        $('#empty_saved_message').hide();
+        if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
+            $('#empty_history_message').show();
+        } else {
+            $('#empty_history_message').hide();
+        }
+        $('#movie_book_switch').hide();
+        $('#see_recs').show();
+        $('#search_panel').hide();
+        break;
+      case SAVED_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').hide();
+        $('#history').hide();
+        $('#saved').show();
+        $('#upper_panel').show();
+        $('#empty_history_message').hide();
+        if (savedItems["movies"].length === 0 && savedItems["books"].length === 0) {
+            $('#empty_saved_message').show();
+        } else {
+            $('#empty_saved_message').hide();
+        }
+        $('#movie_book_switch').hide();
+        $('#see_recs').show();
+        $('#search_panel').hide();
+        break;
+      default:
+        console.log("def");
+    }
+
+    updateListButtons();
+}
+
+</script>
+</head>
+<body>
+
+<div id="movie_book_switch">
+    <input type="radio" id="movies_radio" name="domain" value="movies" onchange="updateDomain('movies')" checked>
+    <label for="movies_radio">Movies</label>
+    <input type="radio" id="books_radio" name="domain" value="books" onchange="updateDomain('books')">
+    <label for="books_radio">Books</label>
+    <br>
+    <br>
+</div>
+
+<div id="init_panel">
+    <span>To start, please pick a book or a movie</span>
+</div>
+
+<div id="search_panel">
+    <span>Find: </span><input id="movieTitles" onkeypress="pressedKey(event)">
+    <input id="bookTitles" onkeypress="pressedKey(event)"> <button onclick="chooseItem()">Choose</button>
+    <br/> <br/>
+</div>
+
+<div id="upper_panel">
+    <button onclick="reset()">Start Again</button>
+    <button id="historyButton" onclick="seeHistory()">Activity History (0)</button>
+    <button id="savedButton" onclick="seeSaved()">Saved Picks (0)</button>
+    <div id="see_recs">
+        <br>
+        <button onclick="seeRecs()">See recommendations</button>
+    </div>
+    <p id="profile_topcs_description">Your top topics: <i><span id="profile_topics"></span></i></p>
+    <p id="empty_history_message">You do not have a history of interactions with movies or books in this application yet.</p>
+    <p id="empty_saved_message">You have not saved any movies or books in this application.</p>
+</div>
+
+<div id="recommendation">
+    <h3 id="title"></h3>
+    <img src="" id="cover" width="150px"><br>
+    <p>Item top topics: <i><span id="item_topics"></span></i></p>
+    <span id="description"></span><br><br>
+
+    <button onclick="lessLikeThis()">Less like this</button>
+    <button onclick="saveItem()">Save</button>
+    <button id="moreLikeThisButton" onclick="moreLikeThis()">More like this</button>
+</div>
+
+<div id="history">
+    <div id="movieHistory"></div>
+    <div id="bookHistory"></div>
+</div>
+
+<div id="saved">
+    <div id="movieSaved"></div>
+    <div id="bookSaved"></div>
+</div>
+
+<form action="bookcine_task.html" method="GET">
+    <input type="text" class="form-control" id="turkId" maxlength="62" name="turkId" placeholder="Please enter your amazon turk id and press next" required>
+    <button id="submitTurkId">Next</button>
+</form>
+
+</body>
+</html>
