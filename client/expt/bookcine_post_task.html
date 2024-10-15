@@ -46,7 +46,7 @@
                 { statement: "Overall, I am satisfied with the recommender. (Attitudes)", name: "satisfaction" },
                 { statement: "If a recommender such as this exists, I will use it to find books to read. (Intention to Use the System)", name: "intention_use" },
                 { statement: "I liked the fact that the book was (or books were) recommended to me based on both books and movies. (Cross-domain Acceptance)", name: "cross_domain" },
-                { statement: "I came across interesting movie by accident, while searching for the book. (Serendipity)", name: "serendipity" }
+                { statement: "I came across interesting movies by accident, while searching for the book. (Serendipity)", name: "serendipity" }
             ];
 
             // Dynamically generate survey items
@@ -65,6 +65,9 @@
                 $('#surveyContainer').append(surveyItem);
                 $('#surveyContainer').append("<br>");
             });
+            $('#surveyContainer').append("<br><label for=\"w3review\">Any comments:</label><br>\n" +
+                "\n" +
+                "<textarea name=\"w3review\" rows=\"4\" cols=\"50\">");
         });
     </script>
 

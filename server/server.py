@@ -90,7 +90,7 @@ def extract_ids(ratings):
         ids.append(obj[0])
     return ids
 
-def get_ratings(request_data):
+def get_params(request_data):
     params = str(request_data)
     if params == "b''":
         params = 'b\'{"movies":[[2011,1]], "books":[]}\''
@@ -102,7 +102,7 @@ def get_item_id(request_data):
         params = 'b\'{"movies":[[2011,1]], "books":[]}\''
     return int(json.loads(params[2:-1]))
 
-def get_recommendation(ratings, domain):
+def get_recommendation(ratings, domain, rec_num):
     profile = get_user_profile(ratings)
 
     limited_tg = None
@@ -122,17 +122,17 @@ def get_recommendation(ratings, domain):
     recs = recs[~recs.item_id.isin(rated_domain_items)]  # removing rated movies or books
 
     #item itself
-    item_id = recs.sort_values(by="sim", ascending=False).head(1).to_dict(orient="tight")["data"][0][0]
-    item_dict = items[items.item_id == item_id].to_dict()
+    item_ids = recs.sort_values(by="sim", ascending=False).head(rec_num).item_id
+    item_dict = items[items.item_id.isin(item_ids)].to_dict()
 
     #item top topics
-    item_top_topics = limited_tg[limited_tg.item_id == item_id].sort_values("score", ascending=False)[["tag"]].head(
-        5).to_dict()
+    item_top_topics = limited_tg[limited_tg.item_id.isin(item_ids)].sort_values("score", ascending=False)[["item_id",
+        "tag"]].groupby("item_id").head(5).sort_values("item_id").to_dict()
 
     # profile top topics
     profile_top_topics = profile.sort_values("score", ascending=False).head(5).to_dict()
 
-    data = {"item": item_dict, "item_topics": item_top_topics, "profile_topics": profile_top_topics}
+    data = {"items": item_dict, "item_topics": item_top_topics, "profile_topics": profile_top_topics}
     output = simplejson.dumps(data, ignore_nan=True)
     return output
 
@@ -151,18 +151,24 @@ def get_item(item_id, items, limited_tg):
 
 @app.route("/movie_recs", methods=['POST', 'GET'])
 def get_movie_recs():
-    ratings = get_ratings(request.data)
+    params = get_params(request.data)
+    ratings = { "movies" : params["movies"], "books" : params["books"]}
+    rec_num = params["rec_num"]
     print(ratings)
+    print(rec_num)
 
-    movie_json = get_recommendation(ratings, "movies")
+    movie_json = get_recommendation(ratings, "movies", rec_num)
     return jsonify(movie_json)
 
 @app.route("/book_recs", methods=['POST', 'GET'])
 def get_book_recs():
-    ratings = get_ratings(request.data)
+    params = get_params(request.data)
+    ratings = {"movies": params["movies"], "books": params["books"]}
+    rec_num = params["rec_num"]
     print(ratings)
+    print(rec_num)
 
-    book_json = get_recommendation(ratings, "books")
+    book_json = get_recommendation(ratings, "books", rec_num)
     return jsonify(book_json)
 
 @app.route("/movie", methods=['POST', 'GET'])

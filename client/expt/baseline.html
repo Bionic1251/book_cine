@@ -7,14 +7,14 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
 
-    <script type="text/javascript" src="server_address.js"></script>
-    <script type="text/javascript" src="movie_titles.js"></script>
-    <script type="text/javascript" src="book_titles.js"></script>
+    <script type="text/javascript" src="../server_address.js"></script>
+    <script type="text/javascript" src="../movie_titles.js"></script>
+    <script type="text/javascript" src="../book_titles.js"></script>
 
-    <script type="text/javascript" src="Util.js"></script>
-    <script type="text/javascript" src="Item.js"></script>
+    <script type="text/javascript" src="../Util.js"></script>
+    <script type="text/javascript" src="../Item.js"></script>
 
-    <link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />
+    <link rel="stylesheet" href="../jquery-ui-1.14.0/jquery-ui.css" />
     <!--<link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />-->
     <meta charset="UTF-8">
     <title>BookCine</title>
@@ -25,6 +25,7 @@ const INIT_STATE = "init";
 const RECOMMENDATION_STATE = "recommendation";
 const HISTORY_STATE = "history";
 const SAVED_STATE = "saved";
+const RECOMMENDATION_LIST_STATE = "recommendation_list";
 
 // constants
 const BOOK_DOMAIN = "books";
@@ -33,11 +34,13 @@ const POSITIVE_WEIGHT = 1;
 const NEGATIVE_WEIGHT = -0.7;
 const MAX_DESCRIPTION_LENGTH = 200;
 const MIN_AUTOCOMPLETE_LEN = 3;
+const RECOMMENDATION_NUM = 5;
 
 // variables
 var currentState = INIT_STATE;
 var domain = MOVIE_DOMAIN;
 var item = null;
+var items = [];
 var profileTopics = null;
 var ratings = {"movies":[], "books":[]};
 var savedItems = {"movies":[], "books":[]};
@@ -46,9 +49,6 @@ var userVectorChanged = false;
 function updateDomain(val) {
     domain = val;
     updateSearchField();
-    if (item != null) {
-        nextItem();
-    }
 }
 
 function updateSearchField(val) {
@@ -218,8 +218,27 @@ function updateItemInfo() {
     updateProfileTopics();
 }
 
+function updateRecInfo() {
+    $("#movieRec").empty();
+    if(items["movies"]) {
+        $("#movieRec").append("<h1>Your movie recommendations</h1>");
+        items["movies"].forEach((entry, index) => {
+            $("#movieRec").append(makeListItem(entry, "recs", MOVIE_DOMAIN));
+        });
+    }
+
+    $("#bookRec").empty();
+    if(items["books"]) {
+        $("#bookRec").append("<h1>Your book recommendations</h1>");
+        items["books"].forEach((entry, index) => {
+            $("#bookRec").append(makeListItem(entry, "recs", BOOK_DOMAIN));
+        });
+    }
+    updateProfileTopics();
+}
+
 function getRatingsForAPI(){
-    output = {"movies" : ratings["movies"].map(entry => [entry[0].id, entry[1]]),
+    let output = {"movies" : ratings["movies"].map(entry => [entry[0].id, entry[1]]),
         "books" : ratings["books"].map(entry => [entry[0].id, entry[1]])}
     return output;
 }
@@ -239,11 +258,45 @@ function nextItem() {
     const successFunction = function (resp) {
         data = jQuery.parseJSON(jQuery.parseJSON(resp))
 
-        item = new Item(domain, data['items'], data['item_topics'], 0);
         profileTopics = Util.retrieveArray(data['profile_topics']["tag"]);
 
         updateItemInfo();
-        updateState(RECOMMENDATION_STATE);
+        updateState(INIT_STATE);
+    }
+
+    Util.sendRequest(address, dataToPass, successFunction);
+}
+
+function updateRecommendations() {
+    items = {};
+    getRecommendations(MOVIE_DOMAIN);
+    getRecommendations(BOOK_DOMAIN);
+}
+
+function getRecommendations(local_domain) {
+    if (local_domain == MOVIE_DOMAIN) {
+        address = SERVER_ADDRESS + "/movie_recs";
+    }else{
+        address = SERVER_ADDRESS + "/book_recs";
+    }
+
+    let ratings = getRatingsForAPI();
+    ratings['rec_num'] = RECOMMENDATION_NUM;
+    const dataToPass = JSON.stringify(ratings);
+
+    const successFunction = function (resp) {
+        data = jQuery.parseJSON(jQuery.parseJSON(resp))
+
+        items[local_domain] = []
+        for (let i = 0; i < RECOMMENDATION_NUM; i++){
+            items[local_domain].unshift(new Item(local_domain, data['items'], data['item_topics'], i));
+        }
+        profileTopics = Util.retrieveArray(data['profile_topics']["tag"]);
+        console.log(items);
+        console.log(items[local_domain]);
+
+        updateRecInfo();
+        updateState(RECOMMENDATION_LIST_STATE);
     }
 
     Util.sendRequest(address, dataToPass, successFunction);
@@ -276,17 +329,17 @@ $(document).ready(function () {
 });
 
 function makeListItem(item, type, itemDomain) {
-    var itemToDisplay = $("<div></div>");
+    var itemToDisplay = $("<div style='border: black 1px solid; margin: 2px; padding: 2px;'></div>");
     itemToDisplay.append('<img src="' + item.cover + '" width="50px"><br>');
     itemToDisplay.append("<h4>" + item.title + "</h4><br>");
     itemToDisplay.append("<span>" + Util.arrayToString(item.topics) + "</span><br>");
-    var selectButton = $("<button>Select</button><br>");
-    selectButton.click(function(){
-        updateItemById(item.id, itemDomain);
-        seeRecs();
-    });
-    itemToDisplay.append(selectButton);
     if (type === "history") {
+        var selectButton = $("<button>Select</button><br>");
+        selectButton.click(function(){
+            updateItemById(item.id, itemDomain);
+            seeRecs();
+        });
+        itemToDisplay.append(selectButton);
         var removeButton = $("<button>Remove</button><br>");
         removeButton.click(function(){
             if (itemDomain === MOVIE_DOMAIN) {
@@ -299,16 +352,32 @@ function makeListItem(item, type, itemDomain) {
         });
         itemToDisplay.append(removeButton);
     } else {
-        var removeButton = $("<button>Remove</button><br>");
-        removeButton.click(function(){
-            if (itemDomain === MOVIE_DOMAIN) {
-                savedItems[MOVIE_DOMAIN] = savedItems[MOVIE_DOMAIN].filter(item1 => item1.id !== item.id);
-            } else {
-                savedItems[BOOK_DOMAIN] = savedItems[BOOK_DOMAIN].filter(item1 => item1.id !== item.id);
+        if (type === "recs") {
+            if (itemDomain === BOOK_DOMAIN) {
+                let finishButton = $("<button>Choose this book and Finish</button>");
+                finishButton.click(function (){
+                    window.location.replace("baseline_finish.html");
+                });
+                itemToDisplay.append(finishButton);
             }
-            seeSaved();
-        });
-        itemToDisplay.append(removeButton);
+        }else {
+            var selectButton = $("<button>Select</button><br>");
+            selectButton.click(function(){
+                updateItemById(item.id, itemDomain);
+                seeRecs();
+            });
+            itemToDisplay.append(selectButton);
+            var removeButton = $("<button>Remove</button><br>");
+            removeButton.click(function () {
+                if (itemDomain === MOVIE_DOMAIN) {
+                    savedItems[MOVIE_DOMAIN] = savedItems[MOVIE_DOMAIN].filter(item1 => item1.id !== item.id);
+                } else {
+                    savedItems[BOOK_DOMAIN] = savedItems[BOOK_DOMAIN].filter(item1 => item1.id !== item.id);
+                }
+                seeSaved();
+            });
+            itemToDisplay.append(removeButton);
+        }
     }
     return itemToDisplay;
 }
@@ -346,7 +415,7 @@ function seeRecs(){
       nextItem();
       userVectorChanged = false;
     } else {
-        updateState(RECOMMENDATION_STATE);
+        updateState(INIT_STATE);
     }
 }
 
@@ -358,12 +427,13 @@ function updateState(state) {
         $('#recommendation').hide();
         $('#history').hide();
         $('#saved').hide();
-        $('#upper_panel').hide();
+        $('#upper_panel').show();
         $('#empty_saved_message').hide();
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
         $('#search_panel').show();
+        $('#recommendationList').hide();
         break;
       case RECOMMENDATION_STATE:
         $('#init_panel').hide();
@@ -376,13 +446,14 @@ function updateState(state) {
         $('#movie_book_switch').show();
         $('#see_recs').hide();
         $('#search_panel').show();
-        if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
+        $('#recommendationList').hide();
+        /*if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
             $('#movies_radio').attr("disabled", true);
             $('#books_radio').attr("disabled", true);
         } else {
             $('#movies_radio').attr("disabled", false);
             $('#books_radio').attr("disabled", false);
-        }
+        }*/
         break;
       case HISTORY_STATE:
         $('#init_panel').hide();
@@ -399,8 +470,21 @@ function updateState(state) {
         $('#movie_book_switch').hide();
         $('#see_recs').show();
         $('#search_panel').hide();
+        $('#recommendationList').hide();
         break;
-      case SAVED_STATE:
+      case RECOMMENDATION_LIST_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').hide();
+        $('#history').hide();
+        $('#saved').hide();
+        $('#upper_panel').show();
+        $('#empty_history_message').hide();
+        $('#movie_book_switch').hide();
+        $('#see_recs').hide();
+        $('#search_panel').hide();
+        $('#recommendationList').show();
+        break;
+        case SAVED_STATE:
         $('#init_panel').hide();
         $('#recommendation').hide();
         $('#history').hide();
@@ -415,6 +499,7 @@ function updateState(state) {
         $('#movie_book_switch').hide();
         $('#see_recs').show();
         $('#search_panel').hide();
+        $('#recommendationList').hide();
         break;
       default:
         console.log("def");
@@ -452,7 +537,7 @@ function updateState(state) {
     <button id="savedButton" onclick="seeSaved()">Saved Picks (0)</button>
     <div id="see_recs">
         <br>
-        <button onclick="seeRecs()">See recommendations</button>
+        <button onclick="seeRecs()">Back to search</button>
     </div>
     <p id="profile_topcs_description">Your top topics: <i><span id="profile_topics"></span></i></p>
     <p id="empty_history_message">You do not have a history of interactions with movies or books in this application yet.</p>
@@ -465,9 +550,9 @@ function updateState(state) {
     <p>Item top topics: <i><span id="item_topics"></span></i></p>
     <span id="description"></span><br><br>
 
-    <button onclick="lessLikeThis()">Less like this</button>
+    <button onclick="lessLikeThis()">Dislike</button>
     <button onclick="saveItem()">Save</button>
-    <button id="moreLikeThisButton" onclick="moreLikeThis()">More like this</button>
+    <button id="moreLikeThisButton" onclick="moreLikeThis()">Like</button>
 </div>
 
 <div id="history">
@@ -479,5 +564,13 @@ function updateState(state) {
     <div id="movieSaved"></div>
     <div id="bookSaved"></div>
 </div>
+
+<button onclick="updateRecommendations()">Show recommendations</button>
+
+<div id="recommendationList">
+    <div id="bookRec"></div>
+    <div id="movieRec"></div>
+</div>
+
 </body>
 </html>

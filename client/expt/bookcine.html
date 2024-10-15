@@ -7,6 +7,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
 
+    <script type="text/javascript" src="../server_address.js"></script>
     <script type="text/javascript" src="../movie_titles.js"></script>
     <script type="text/javascript" src="../book_titles.js"></script>
 
@@ -26,7 +27,6 @@ const HISTORY_STATE = "history";
 const SAVED_STATE = "saved";
 
 // constants
-const SERVER_ADDRESS = "http://127.0.0.1:5000";
 const BOOK_DOMAIN = "books";
 const MOVIE_DOMAIN = "movies";
 const POSITIVE_WEIGHT = 1;
@@ -232,16 +232,21 @@ function nextItem() {
         address = SERVER_ADDRESS + "/book_recs";
     }
 
-    const dataToPass = JSON.stringify(getRatingsForAPI());
+    let ratings = getRatingsForAPI();
+    ratings['rec_num'] = 1;
+    const dataToPass = JSON.stringify(ratings);
 
     const successFunction = function (resp) {
         data = jQuery.parseJSON(jQuery.parseJSON(resp))
 
-        item = new Item(domain, data['item'], data['item_topics']);
+        item = new Item(domain, data['items'], data['item_topics'], 0);
         profileTopics = Util.retrieveArray(data['profile_topics']["tag"]);
 
         updateItemInfo();
         updateState(RECOMMENDATION_STATE);
+        if (domain == BOOK_DOMAIN) {
+            $('#finishButton').show();
+        }
     }
 
     Util.sendRequest(address, dataToPass, successFunction);
@@ -260,7 +265,8 @@ function updateItemById(id, currentDomain) {
     const successFunction = function (resp) {
         data = jQuery.parseJSON(jQuery.parseJSON(resp))
 
-        item = new Item(domain, data['item'], data['item_topics']);
+        item = new Item(domain, data['item'], data['item_topics'], 0);
+        console.log(data);
 
         updateItemInfo();
     }
@@ -361,6 +367,7 @@ function updateState(state) {
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
+        $('#finishButton').hide();
         $('#search_panel').show();
         break;
       case RECOMMENDATION_STATE:
@@ -373,6 +380,7 @@ function updateState(state) {
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
+        $('#finishButton').hide();
         $('#search_panel').show();
         if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
             $('#movies_radio').attr("disabled", true);
@@ -388,6 +396,7 @@ function updateState(state) {
         $('#history').show();
         $('#saved').hide();
         $('#upper_panel').show();
+        $('#finishButton').hide();
         $('#empty_saved_message').hide();
         if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
             $('#empty_history_message').show();
@@ -404,6 +413,7 @@ function updateState(state) {
         $('#history').hide();
         $('#saved').show();
         $('#upper_panel').show();
+        $('#finishButton').hide();
         $('#empty_history_message').hide();
         if (savedItems["movies"].length === 0 && savedItems["books"].length === 0) {
             $('#empty_saved_message').show();
@@ -478,10 +488,8 @@ function updateState(state) {
     <div id="bookSaved"></div>
 </div>
 
-<form action="bookcine_task.html" method="GET">
-    <input type="text" class="form-control" id="turkId" maxlength="62" name="turkId" placeholder="Please enter your amazon turk id and press next" required>
-    <button id="submitTurkId">Next</button>
+<form action="bookcine_post_task.html" method="GET">
+    <button id="finishButton" type="submit">Choose this book and Finish</button>
 </form>
-
 </body>
 </html>

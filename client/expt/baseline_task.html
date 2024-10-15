@@ -24,18 +24,20 @@
 
 <p>Bellow, is the instruction, which will help you to use the system.</p>
 
-<p>In the system, you can find a book similar to a set of books or movies. The system narrows down your search intentions as you hit the following buttons:</p>
-    <button>Less like this</button> <button>More like this</button>
+<p>The system will provide you recommendations of books and movies based on your preferences in books and movies. To indicate you preferences, search for a book or a movie with the search field:</p>
+<span>Find: </span><input>
 
-<p>After you hit one of these buttons, the system will suggest a book or a movie to you based on the feedback you provided. You can provide your feedback as much as you want.</p>
+<p>And use the following buttons:</p>
+<button>Dislike</button> <button>Like</button>
+
 <p>To switch between books and movies, use the following control:</p>
     <input type="radio" id="movies_radio" name="domain" value="movies" onchange="updateDomain('movies')" checked>
     <label for="movies_radio">Movies</label>
     <input type="radio" id="books_radio" name="domain" value="books" onchange="updateDomain('books')">
     <label for="books_radio">Books</label>
 
-<p>To look for a particular book or movie, use the search field:</p>
-<span>Find: </span><input>
+<p>To see the recommendations, hit the following button:</p>
+<button>Show recommendations</button>
 
 <p>At any time, you can restart the recommendation process. For example, this might happen if you decide to look for a different kind of book, or just think that the system does not capture your tastes correctly. To restart, hit the following button:</p>
     <button>Start Again</button>
@@ -52,16 +54,15 @@
 
 <p>Please select all the correct statements to proceed:</p>
 
-    <form action="bookcine.html" method="GET">
+    <form action="baseline.html" method="GET">
 <label><input type="checkbox" name="statements" value="suggest_books_movies"> The system suggests books and movies</label><br>
         <label><input type="checkbox" name="statements" value="spend_10_minutes"> I can spend 10 minutes to complete this task</label><br>
         <label><input type="checkbox" name="statements" value="only_books"> The system only recommends books</label><br>
         <label><input type="checkbox" name="statements" value="spend_1_hour"> I can spend up to 1 hour to complete this task</label><br>
-        <label><input type="checkbox" name="statements" value="recommend_after_more_like_this"> The system recommends to me the next book or movie after I hit the "More like this" button</label><br>
         <label><input type="checkbox" name="statements" value="find_movie_interest"> I need to find a movie I would be interested in watching</label><br>
         <label><input type="checkbox" name="statements" value="no_return_after_finish"> I cannot come back to the system after I hit the Finish button</label><br>
         <label><input type="checkbox" name="statements" value="search_any_time"> I can look for books and movies with a search field at any time</label><br>
-        <label><input type="checkbox" name="statements" value="save_to_finish"> If I found the book I would be interested in reading and would like to finish the task, I should hit the save button</label><br>
+        <label><input type="checkbox" name="statements" value="save_to_finish"> If I found the book I would be interested in reading and would like to finish the task, I should hit the Save button</label><br>
         <button type="submit">Submit</button>
     </form>
 
