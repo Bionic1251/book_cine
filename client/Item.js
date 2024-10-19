@@ -1,18 +1,23 @@
 class Item {
-    constructor(type, data, topics, pos) {
-        this.description = Util.retrieveByPos(data, "description", pos);
-        this.title = Util.retrieveByPos(data, "title", pos);
+    constructor(type, data, topics) {
+        this.description = Util.retrieve(data, "description");
+        this.title = Util.retrieve(data, "title");
         if (type == BOOK_DOMAIN) {
-            this.cover = Util.retrieveByPos(data,"img", pos);
+            this.cover = Util.retrieve(data,"img");
+            this.authors = Util.retrieveArray(data["authors"]);
         } else {
-            this.cover = "https://image.tmdb.org/t/p/original/" + Util.retrieveByPos(data,"posterPath", pos);
+            this.cover = "https://image.tmdb.org/t/p/original/" + Util.retrieve(data,"posterPath");
+            this.year = Util.retrieve(data,"year");
+            this.runtime = Util.retrieve(data,"runtime");
+            if (isNaN(this.runtime)) {
+                this.runtime = 0;
+            } else {
+                this.runtime = Math.floor(this.runtime);
+            }
         }
-        this.id = Util.retrieveByPos(data, "item_id", pos);
-        if (!topics["item_id"]) {
-            this.topics = Util.retrieveArray(topics["tag"]);
-            return;
-        }
-        this.topics = Util.retrieveTags(topics, this.id);
+        this.id = Util.retrieve(data, "item_id");
+        this.topics = Util.retrieveArray(topics["tag"]);
+        this.topics.sort();
         this.data = data;
         this.type = type;
     }

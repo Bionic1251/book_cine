@@ -2,7 +2,7 @@ class Util {
     static retrieveArray(data) {
         var arr = [];
         for (var key in data){
-            arr.push(data[key]);
+            arr.unshift(data[key]);
         }
         return arr;
     }
@@ -10,37 +10,6 @@ class Util {
     static retrieve(data, field) {
         for (var key in data[field]){
             return data[field][key];
-        }
-        return null;
-    }
-
-    static retrieveByPos(data, field, pos) {
-        let i = 0;
-        for (var key in data[field]){
-            if (i === pos) {
-                return data[field][key];
-            }
-            i++;
-        }
-        return null;
-    }
-
-    static retrieveTags(tagData, item_id) {
-        let arr = [];
-        let itemIdDict = tagData["item_id"];
-        for (let key in itemIdDict){
-            if(itemIdDict[key] === item_id) {
-                arr.unshift(tagData["tag"][key]);
-            }
-        }
-        return arr;
-    }
-
-    static retrieveInternalIdByItemId(data, field, item_id) {
-        for (var key in data[field]){
-            if (data[field][key] === item_id) {
-                return key;
-            }
         }
         return null;
     }
