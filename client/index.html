@@ -188,7 +188,7 @@ function updateMetaInfo() {
 }
 
 function getDescription(item) {
-    if (item === null) {
+    if (item === null || item.description === null) {
         return "";
     }
     var text = item.description;
@@ -208,7 +208,7 @@ function getDescription(item) {
 function updateDescription() {
     $('#description').empty();
     let descriptionElement = $("<span>" + getDescription(item) + "</span>")
-    if (item !== null && item.description.length > MAX_DESCRIPTION_LENGTH) {
+    if (item !== null && item.description !== null && item.description.length > MAX_DESCRIPTION_LENGTH) {
         let showMoreLink = $(" <a class='link'>Show more </a>");
         descriptionElement.append(showMoreLink);
         showMoreLink.click(function(){
