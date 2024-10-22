@@ -12,14 +12,14 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 # init
 
 # loading data
-tg_movies = pd.read_csv("tg_movies.csv")
-tg_books = pd.read_csv("tg_books.csv")
+limited_tg_books = pd.read_csv("limited_tg_books.csv")
+limited_tg_movies = pd.read_csv("limited_tg_movies.csv")
 movies = pd.read_csv("movies.csv")
 books = pd.read_csv("books.csv")
 
 # limiting tag genome
-limited_tg_books = tg_books[tg_books.tag.isin(tg_movies.tag.unique())]
-limited_tg_movies = tg_movies[tg_movies.tag.isin(tg_books.tag.unique())]
+#limited_tg_books = tg_books[tg_books.tag.isin(tg_movies.tag.unique())]
+#limited_tg_movies = tg_movies[tg_movies.tag.isin(tg_books.tag.unique())]
 
 # calculating vector length
 def get_item_length_df(tg_df):

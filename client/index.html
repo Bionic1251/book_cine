@@ -16,100 +16,7 @@
     <link href="picnic/picnic.css" rel="stylesheet">
     <link rel="stylesheet" href="pure/pure.css">
     <link rel="stylesheet" href="pure/layout.css">
-
-    <style>
-
-        .description {
-            border: grey solid 1px;
-            margin-top: 4px;
-            margin-bottom: 8px;
-            padding: 3px;
-        }
-
-        .movie_title {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-
-        .restart_button {
-            padding-left: 5px;
-            padding-right: 5px;
-            padding-top: 2px;
-            padding-bottom: 2px;
-            font-size: 0.85em;
-        }
-
-        .info_container {
-            text-align: center;
-        }
-
-        .button_with_size {
-            width: 90px;
-            margin-left: 5px;
-        }
-
-        .with_margins_paddings {
-            margin-top: 10px;
-            margin-bottom: 10px;
-            padding: 5px;
-        }
-
-        .with_red_borders {
-            border: solid white 1px;
-        }
-
-        .with_blue_borders {
-            border: solid white 1px;
-        }
-
-        .with_green_borders {
-            border: solid white 1px;
-        }
-
-
-        .item_type {
-            font-size: 2em;
-            font-weight: bold;
-        }
-
-        .meta_info {
-            font-size: large;
-            color: #5f5f5f;
-        }
-
-        .feedback_info_more {
-            font-size: large;
-            color: #839333;
-        }
-
-        .feedback_info_less {
-            font-size: large;
-            color: red;
-        }
-
-        .input_with_size {
-            width: 230px;
-        }
-
-        .item_list_container {
-            border: solid grey 1px;
-            padding: 5px;
-            margin: 5px;
-            display: flex;
-        }
-
-        .item_list_container:hover {
-            background-color: #efefef;
-        }
-
-        .item_list_info_container {
-            margin-left: 5px;
-        }
-
-        .select_button {
-            margin-right: 3px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 
     <meta charset="UTF-8">
     <title>BookCine</title>
@@ -127,7 +34,7 @@ const MOVIE_DOMAIN = "movies";
 const POSITIVE_WEIGHT = 1;
 const NEGATIVE_WEIGHT = -0.7;
 const MAX_DESCRIPTION_LENGTH = 200;
-const MIN_AUTOCOMPLETE_LEN = 3;
+const MIN_AUTOCOMPLETE_LEN = 4;
 
 // variables
 var currentState = INIT_STATE;
@@ -192,7 +99,6 @@ function chooseItem() {
         $("#movieTitles").val("");
     }
     if (id === -1) {
-        console.log(domain);
         alert("Sorry, we do not have this movie or book.")
         updateState(INIT_STATE);
     } else {
@@ -209,7 +115,6 @@ function addRating(item, rating) {
 }
 
 function reset() {
-    domain = MOVIE_DOMAIN;
     item = null;
     profileTopics = null;
     ratings = {"movies":[], "books":[]};
@@ -301,7 +206,17 @@ function getDescription(item) {
 }
 
 function updateDescription() {
-    $('#description').text(getDescription(item));
+    $('#description').empty();
+    let descriptionElement = $("<span>" + getDescription(item) + "</span>")
+    if (item !== null && item.description.length > MAX_DESCRIPTION_LENGTH) {
+        let showMoreLink = $(" <a class='link'>Show more </a>");
+        descriptionElement.append(showMoreLink);
+        showMoreLink.click(function(){
+            descriptionElement.empty();
+            descriptionElement.text(item.description);
+        });
+    }
+    $('#description').append(descriptionElement);
 }
 
 function updateCover() {
@@ -589,7 +504,16 @@ function updateState(state) {
 </div>
 
 <div id="init_panel">
-    <span>To start, please pick a book or a movie</span>
+    <p>
+  This system helps you discover movies and books that are <strong>similar</strong> to the ones you choose.
+  For example, if you're searching for a movie about wizards, you could start by selecting a
+  Harry Potter movie. You can also choose a Harry Potter book—the system works
+        <strong>across both books and movies.</strong>
+</p>
+<p>
+  Try switching between books and movies throughout your search to explore a wider range of options!
+</p>
+
 </div>
 
 <fieldset class="flex two">
@@ -599,6 +523,7 @@ function updateState(state) {
 </fieldset>
 
 <div id="recommendation">
+    <span id="profile_topcs_description"><b>Your key topics:</b> <i><span id="profile_topics"></span></i></span> <a class="button error restart_button" onclick="reset()">Start again</a><br>
     <div class="with_green_borders info_container">
         <span class="movie_title" id="title"></span><br>
         <span id="meta_info" class="meta_info">1999, 136 minutes</span>
@@ -607,9 +532,8 @@ function updateState(state) {
     </div>
 
     <span><b>Movie key topics:</b> <i><span id="item_topics"></span></i></span><br>
-    <span id="profile_topcs_description"><b>Your key topics:</b> <i><span id="profile_topics"></span></i></span> <a class="button error restart_button" onclick="reset()">Start again</a><br>
     <div class="description">
-        <span><b>Description: </b><span id="description"></span></span><br>
+        <span><b>Description: </b></span><div id="description"></div><br>
     </div>
 
     <div class="with_green_borders info_container">

@@ -1,0 +1,95 @@
+.link {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.description {
+    border: grey solid 1px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    padding: 3px;
+}
+
+.movie_title {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.restart_button {
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 0.85em;
+}
+
+.info_container {
+    text-align: center;
+}
+
+.button_with_size {
+    width: 90px;
+    margin-left: 5px;
+}
+
+.with_margins_paddings {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.with_red_borders {
+    border: solid white 1px;
+}
+
+.with_blue_borders {
+    border: solid white 1px;
+}
+
+.with_green_borders {
+    border: solid white 1px;
+}
+
+
+.item_type {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.meta_info {
+    font-size: large;
+    color: #5f5f5f;
+}
+
+.feedback_info_more {
+    font-size: large;
+    color: #839333;
+}
+
+.feedback_info_less {
+    font-size: large;
+    color: red;
+}
+
+.input_with_size {
+    width: 230px;
+}
+
+.item_list_container {
+    border: solid grey 1px;
+    padding: 5px;
+    margin: 5px;
+    display: flex;
+}
+
+.item_list_container:hover {
+    background-color: #efefef;
+}
+
+.item_list_info_container {
+    margin-left: 5px;
+}
+
+.select_button {
+    margin-right: 3px;
+}
