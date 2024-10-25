@@ -45,11 +45,19 @@ var ratings = {"movies":[], "books":[]};
 var savedItems = {"movies":[], "books":[]};
 var userVectorChanged = false;
 
+function areRatingsEmpty() {
+    return ratings["movies"].length === 0 && ratings["books"].length === 0;
+}
+
 function updateDomain(val) {
     domain = val;
     updateSearchField();
     if (item != null) {
-        nextItem();
+        if (areRatingsEmpty()) {
+            updateState(INIT_STATE);
+        } else {
+            nextItem();
+        }
     }
 }
 
@@ -100,7 +108,6 @@ function chooseItem() {
     }
     if (id === -1) {
         alert("Sorry, we do not have this movie or book.")
-        updateState(INIT_STATE);
     } else {
         updateItemById(id, domain);
         updateState(RECOMMENDATION_STATE);
@@ -118,7 +125,7 @@ function reset() {
     item = null;
     profileTopics = null;
     ratings = {"movies":[], "books":[]};
-    savedItems = {"movies":[], "books":[]};
+    //savedItems = {"movies":[], "books":[]};
     userVectorChanged = false;
     updateItemInfo();
     updateState(INIT_STATE);
@@ -326,7 +333,7 @@ function makeListItem(item, rating, type, itemDomain) {
     selectButton.click(function(){
         setDomain(itemDomain);
         updateItemById(item.id, itemDomain);
-        seeRecs();
+        updateState(RECOMMENDATION_STATE);
     });
     metaInfo.append(selectButton);
     if (type === "history") {
@@ -391,11 +398,15 @@ function seeSaved(){
 }
 
 function seeRecs(){
-    if (userVectorChanged && (ratings["movies"].length !== 0 || ratings["books"].length !== 0)) {
+    if (userVectorChanged && !areRatingsEmpty()) {
       nextItem();
       userVectorChanged = false;
     } else {
-        updateState(RECOMMENDATION_STATE);
+        if (item === null) {
+            updateState(INIT_STATE);
+        } else {
+            updateState(RECOMMENDATION_STATE);
+        }
     }
 }
 
@@ -407,7 +418,8 @@ function updateState(state) {
         $('#recommendation').hide();
         $('#history').hide();
         $('#saved').hide();
-        $('#upper_panel').hide();
+        $('#search_panel').show();
+        $('#upper_panel').show();
         $('#empty_saved_message').hide();
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
@@ -419,19 +431,13 @@ function updateState(state) {
         $('#recommendation').show();
         $('#history').hide();
         $('#saved').hide();
+        $('#search_panel').show();
         $('#upper_panel').show();
         $('#empty_saved_message').hide();
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
         $('#search_panel').show();
-        if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
-            $('#movies_radio').attr("disabled", true);
-            $('#books_radio').attr("disabled", true);
-        } else {
-            $('#movies_radio').attr("disabled", false);
-            $('#books_radio').attr("disabled", false);
-        }
         $('#recs_tab').prop('checked',true);
         break;
       case HISTORY_STATE:
@@ -439,9 +445,10 @@ function updateState(state) {
         $('#recommendation').hide();
         $('#history').show();
         $('#saved').hide();
+        $('#search_panel').hide();
         $('#upper_panel').show();
         $('#empty_saved_message').hide();
-        if (ratings["movies"].length === 0 && ratings["books"].length === 0) {
+        if (areRatingsEmpty()) {
             $('#empty_history_message').show();
         } else {
             $('#empty_history_message').hide();
@@ -456,6 +463,7 @@ function updateState(state) {
         $('#recommendation').hide();
         $('#history').hide();
         $('#saved').show();
+        $('#search_panel').hide();
         $('#upper_panel').show();
         $('#empty_history_message').hide();
         if (savedItems["movies"].length === 0 && savedItems["books"].length === 0) {
@@ -492,8 +500,8 @@ function updateState(state) {
     <input id='save_tab' type='radio' name='tabgroupB' onclick="seeSaved()">
     <label class="pseudo button toggle" for="save_tab" id="savedButton">Bookmarked (0)</label>
 
-    <p id="empty_history_message">You do not have a history of interactions with movies or books in this application yet.</p>
-    <p id="empty_saved_message">You have not saved any movies or books in this application.</p>
+    <p id="empty_history_message">You do not have a history of interactions with movies or books in this system yet.</p>
+    <p id="empty_saved_message">You have not bookmarked any movies or books in this system.</p>
 </div>
 
 <div id="movie_book_switch">
@@ -515,18 +523,20 @@ function updateState(state) {
 </p>
 
 </div>
-
-<fieldset class="flex two">
-  <input placeholder="Movie title" id="movieTitles" class="input_with_size" onkeypress="pressedKey(event)">
-    <input placeholder="Book title" id="bookTitles" class="input_with_size" onkeypress="pressedKey(event)">
-  <button class="button_with_size" onclick="chooseItem()">Choose</button>
-</fieldset>
+        
+<div id="search_panel">
+    <fieldset class="flex two">
+      <input placeholder="Movie title" id="movieTitles" class="input_with_size" onkeypress="pressedKey(event)">
+        <input placeholder="Book title" id="bookTitles" class="input_with_size" onkeypress="pressedKey(event)">
+      <button class="button_with_size" onclick="chooseItem()">Choose</button>
+    </fieldset>
+</div>
 
 <div id="recommendation">
     <span id="profile_topcs_description"><b>Your key topics:</b> <i><span id="profile_topics"></span></i></span> <a class="button error restart_button" onclick="reset()">Start again</a><br>
     <div class="with_green_borders info_container">
         <span class="movie_title" id="title"></span><br>
-        <span id="meta_info" class="meta_info">1999, 136 minutes</span>
+        <span id="meta_info" class="meta_info"></span>
         <br>
         <img id="cover" width="150px"><br>
     </div>

@@ -17,6 +17,9 @@ limited_tg_movies = pd.read_csv("limited_tg_movies.csv")
 movies = pd.read_csv("movies.csv")
 books = pd.read_csv("books.csv")
 
+allowed_tags = pd.read_csv("allowed_tags.csv")
+allowed_tags = set(allowed_tags[allowed_tags.include == 1].tag)
+
 # limiting tag genome
 #limited_tg_books = tg_books[tg_books.tag.isin(tg_movies.tag.unique())]
 #limited_tg_movies = tg_movies[tg_movies.tag.isin(tg_books.tag.unique())]
@@ -126,10 +129,10 @@ def get_recommendation(ratings, domain):
     item_dict = items[items.item_id == item_id].to_dict()
 
     #item top topics
-    item_top_topics = limited_tg[limited_tg.item_id == item_id].sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
+    item_top_topics = limited_tg[(limited_tg.item_id == item_id) & (limited_tg.tag.isin(allowed_tags))].sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
 
     # profile top topics
-    profile_top_topics = profile.sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
+    profile_top_topics = profile[profile.tag.isin(allowed_tags)].sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
 
     data = {"item": item_dict, "item_topics": item_top_topics, "profile_topics": profile_top_topics}
     output = simplejson.dumps(data, ignore_nan=True)
@@ -140,7 +143,7 @@ def get_item(item_id, items, limited_tg):
     item_dict = items[items.item_id == item_id].to_dict()
 
     #item top topics
-    item_top_topics = limited_tg[limited_tg.item_id == item_id].sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
+    item_top_topics = limited_tg[(limited_tg.item_id == item_id)  & (limited_tg.tag.isin(allowed_tags))].sort_values(["score", "tag"], ascending=[False, False]).head(5).to_dict()
 
     data = {"item": item_dict, "item_topics": item_top_topics}
     output = simplejson.dumps(data, ignore_nan=True)
