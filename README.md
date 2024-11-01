@@ -16,8 +16,8 @@ To run **the client**, open *client/index.html*
 ## Required Datasets
 
 The datasets necessary to run the system are as follows:
-Movies: https://grouplens.org/datasets/movielens/tag-genome-2021/
-Books: https://grouplens.org/datasets/book-genome/
+- Movies: https://grouplens.org/datasets/movielens/tag-genome-2021/
+- Books: https://grouplens.org/datasets/book-genome/
 
 ## Corresponding Publications
 
