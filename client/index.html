@@ -161,6 +161,20 @@ function updateTitle() {
     }
 }
 
+function updateLinks() {
+    $('#links').empty();
+    if (item === null) {
+        return;
+    }
+    if (domain === MOVIE_DOMAIN) {
+        $('#links').append("<a href=\"" + item.imdbUrl + "\" class='link' target=\"_blank\">IMDb</a>, ");
+        $('#links').append("<a href=\"" + item.tmdbUrl + "\" class='link' target=\"_blank\">TMDB</a>, ");
+        $('#links').append("<a href=\"" + item.movielensUrl + "\" class='link' target=\"_blank\">MovieLens</a>");
+    } else {
+        $('#links').append("<a href=\"" + item.goodreadsUrl + "\" class='link' target=\"_blank\">Goodreads</a>");
+    }
+}
+
 function updateItemTopics() {
     $('#item_topics').empty();
     if (item === null) {
@@ -256,6 +270,7 @@ function updateItemInfo() {
     updateMetaInfo()
 
     updateItemTopics();
+    updateLinks();
     updateProfileTopics();
 }
 
@@ -544,6 +559,7 @@ function updateState(state) {
     </div>
 
     <span id="item_topics"></span><br>
+    <span><b>Links: </b><span id="links"></span></span><br>
     <div class="description">
         <span><b>Description: </b></span><div id="description"></div><br>
     </div>
