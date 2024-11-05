@@ -2,6 +2,10 @@
 
 **BookCine** is a cross-domain conversational recommender system, which suggests books and movies to users.
 
+## Live System
+
+The system is available at [bookcine.org](https://bookcine.org/)
+
 ## Getting Started
 
 To run **the server** in development mode:
