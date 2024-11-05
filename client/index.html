@@ -162,11 +162,16 @@ function updateTitle() {
 }
 
 function updateItemTopics() {
+    $('#item_topics').empty();
     if (item === null) {
-        $('#item_topics').text("");
-    } else {
-        $('#item_topics').text(Util.arrayToString(item.topics));
+        return;
     }
+    if (domain === MOVIE_DOMAIN) {
+        $('#item_topics').append("<b>Movie key topics: </b>");
+    } else {
+        $('#item_topics').append("<b>Book key topics: </b>");
+    }
+    $('#item_topics').append("<i>" + Util.arrayToString(item.topics) + "</i>");
 }
 
 function updateProfileTopics() {
@@ -499,6 +504,7 @@ function updateState(state) {
     <label class="pseudo button toggle" for="history_tab" id="historyButton">History (0)</label>
     <input id='save_tab' type='radio' name='tabgroupB' onclick="seeSaved()">
     <label class="pseudo button toggle" for="save_tab" id="savedButton">Bookmarked (0)</label>
+    <a href="https://github.com/Bionic1251/book_cine" class='link' target="_blank">About</a>
 
     <p id="empty_history_message">You do not have a history of interactions with movies or books in this system yet.</p>
     <p id="empty_saved_message">You have not bookmarked any movies or books in this system.</p>
@@ -541,7 +547,7 @@ function updateState(state) {
         <img id="cover" width="150px"><br>
     </div>
 
-    <span><b>Movie key topics:</b> <i><span id="item_topics"></span></i></span><br>
+    <span id="item_topics"></span><br>
     <div class="description">
         <span><b>Description: </b></span><div id="description"></div><br>
     </div>
