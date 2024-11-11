@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="jquery-3.7.1.min.js"></script>
+    <script src="jquery-ui-1.14.0/jquery-ui.js"></script>
+
+    <script type="text/javascript" src="movie_titles.js"></script>
+    <script type="text/javascript" src="book_titles.js"></script>
+    <script type="text/javascript" src="server_address.js"></script>
+
+    <script type="text/javascript" src="Util.js"></script>
+    <script type="text/javascript" src="Item.js"></script>
+
+    <link rel="stylesheet" href="jquery-ui-1.14.0/jquery-ui.css" />
+
+    <link href="picnic/picnic.css" rel="stylesheet">
+    <link rel="stylesheet" href="pure/pure.css">
+    <link rel="stylesheet" href="pure/layout.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <meta charset="UTF-8">
+    <title>BookCine</title>
+<script>
+
+// states
+const INIT_STATE = "init";
+const RECOMMENDATION_STATE = "recommendation";
+const HISTORY_STATE = "history";
+const SAVED_STATE = "saved";
+const LOADING_STATE = "loading";
+
+// constants
+const BOOK_DOMAIN = "books";
+const MOVIE_DOMAIN = "movies";
+const POSITIVE_WEIGHT = 1;
+const NEGATIVE_WEIGHT = -0.7;
+const MAX_DESCRIPTION_LENGTH = 200;
+const MIN_AUTOCOMPLETE_LEN = 4;
+
+// variables
+var currentState = INIT_STATE;
+var domain = MOVIE_DOMAIN;
+var item = null;
+var profileTopics = null;
+var ratings = {"movies":[], "books":[]};
+var savedItems = {"movies":[], "books":[]};
+var userVectorChanged = false;
+
+function areRatingsEmpty() {
+    return ratings["movies"].length === 0 && ratings["books"].length === 0;
+}
+
+function updateDomain(val) {
+    domain = val;
+    updateSearchField();
+    if (item != null) {
+        if (areRatingsEmpty()) {
+            updateState(INIT_STATE);
+        } else {
+            nextItem();
+        }
+    }
+}
+
+function updateSearchField(val) {
+    if (domain == BOOK_DOMAIN) {
+        $("#movieTitles").hide();
+        $("#bookTitles").show();
+        return;
+    }
+    $("#movieTitles").show();
+    $("#bookTitles").hide();
+}
+
+$( function() {
+    updateSearchField();
+
+    var movieTitlesArray = Util.retrieveArray(MOVIE_TITLES)
+    var bookTitlesArray = Util.retrieveArray(BOOK_TITLES)
+
+    $("#movieTitles").autocomplete({
+        minLength: MIN_AUTOCOMPLETE_LEN,
+      source: movieTitlesArray
+    });
+
+    $("#bookTitles").autocomplete({
+      minLength: MIN_AUTOCOMPLETE_LEN,
+      source: bookTitlesArray
+    });
+} );
+
+function pressedKey(event) {
+    var key = event.which;
+    if (key == 13) {
+        chooseItem();
+    }
+}
+
+function chooseItem() {
+    let id = -1;
+    if (domain == BOOK_DOMAIN) {
+        let title = $("#bookTitles").val();
+        id = Util.getItemIdByTitle(title, BOOK_TITLES);
+        $("#bookTitles").val("");
+    } else {
+        let title = $("#movieTitles").val();
+        id = Util.getItemIdByTitle(title, MOVIE_TITLES);
+        $("#movieTitles").val("");
+    }
+    if (id === -1) {
+        alert("Sorry, we do not have this movie or book.")
+    } else {
+        updateItemById(id, domain);
+    }
+}
+
+function addRating(item, rating) {
+    //removing item if it is already rated
+    ratings[domain] = ratings[domain].filter(item1 => item1[0].id !== item.id);
+    //adding rating
+    ratings[domain].push([item, rating]);
+}
+
+function reset() {
+    item = null;
+    profileTopics = null;
+    ratings = {"movies":[], "books":[]};
+    //savedItems = {"movies":[], "books":[]};
+    userVectorChanged = false;
+    updateItemInfo();
+    updateState(INIT_STATE);
+}
+
+function lessLikeThis() {
+    //ratings[domain].push([item.id, NEGATIVE_WEIGHT]);
+    addRating(item, NEGATIVE_WEIGHT)
+    nextItem();
+    updateListButtons();
+}
+
+function moreLikeThis() {
+    //ratings[domain].push([item.id, POSITIVE_WEIGHT]);
+    addRating(item, POSITIVE_WEIGHT)
+    nextItem();
+    updateListButtons();
+}
+
+function saveItem() {
+    //removing item if it is already saved
+    savedItems[domain] = savedItems[domain].filter(item1 => item1.id !== item.id);
+    //adding item
+    savedItems[domain].push(item);
+    updateListButtons();
+}
+
+function updateTitle() {
+    if (item === null) {
+        $('#title').text("");
+    } else {
+        $('#title').text(item.title);
+    }
+}
+
+function updateLinks() {
+    $('#links').empty();
+    if (item === null) {
+        return;
+    }
+    if (domain === MOVIE_DOMAIN) {
+        $('#links').append("<a href=\"" + item.imdbUrl + "\" class='link' target=\"_blank\">IMDb</a>, ");
+        $('#links').append("<a href=\"" + item.tmdbUrl + "\" class='link' target=\"_blank\">TMDB</a>, ");
+        $('#links').append("<a href=\"" + item.movielensUrl + "\" class='link' target=\"_blank\">MovieLens</a>");
+    } else {
+        $('#links').append("<a href=\"" + item.goodreadsUrl + "\" class='link' target=\"_blank\">Goodreads</a>");
+    }
+}
+
+function updateItemTopics() {
+    $('#item_topics').empty();
+    if (item === null) {
+        return;
+    }
+    if (domain === MOVIE_DOMAIN) {
+        $('#item_topics').append("<b>Movie key topics: </b>");
+    } else {
+        $('#item_topics').append("<b>Book key topics: </b>");
+    }
+    $('#item_topics').append("<i>" + Util.arrayToString(item.topics) + "</i>");
+}
+
+function updateProfileTopics() {
+    if (profileTopics == null) {
+        $('#profile_topics').text("");
+        $("#profile_topcs_description").hide();
+    } else {
+        $("#profile_topcs_description").show();
+        $('#profile_topics').text(Util.arrayToString(profileTopics));
+    }
+}
+
+function getMetaInfo(currentDomain, item) {
+    if (item === null) {
+        return "";
+    }
+    if (currentDomain == BOOK_DOMAIN) {
+        return "by " + Util.arrayToString(item.authors);
+    } else {
+        return item.year + ", " + item.runtime + " minutes";
+    }
+}
+
+function updateMetaInfo() {
+    $("#meta_info").text(getMetaInfo(domain, item));
+}
+
+function getDescription(item) {
+    if (item === null || item.description === null) {
+        return "";
+    }
+    var text = item.description;
+    if (text.length <= MAX_DESCRIPTION_LENGTH) {
+        return text;
+        return;
+    }
+    let truncated = text.slice(0, MAX_DESCRIPTION_LENGTH);
+    let lastSpace = truncated.lastIndexOf(' ');
+    if (lastSpace !== -1) {
+        truncated = truncated.slice(0, lastSpace);
+    }
+
+    return truncated + '...';
+}
+
+function updateDescription() {
+    $('#description').empty();
+    let descriptionElement = $("<span>" + getDescription(item) + "</span>")
+    if (item !== null && item.description !== null && item.description.length > MAX_DESCRIPTION_LENGTH) {
+        let showMoreLink = $(" <a class='link'>Show more </a>");
+        descriptionElement.append(showMoreLink);
+        showMoreLink.click(function(){
+            descriptionElement.empty();
+            descriptionElement.text(item.description);
+        });
+    }
+    $('#description').append(descriptionElement);
+}
+
+function updateCover() {
+    $('#cover').empty();
+    if (item !== null) {
+        $('#cover').append("<img src=\""+item.cover+"\" width=\"150px\" />");
+    }
+}
+
+function updateListButtons() {
+    var activityCount = ratings["movies"].length;
+    activityCount += ratings["books"].length;
+    $('#historyButton').text("History (" + activityCount + ")");
+
+    var savedCount = savedItems["movies"].length;
+    savedCount += savedItems["books"].length;
+    $('#savedButton').text("Bookmarked (" + savedCount + ")");
+}
+
+function updateItemInfo() {
+    updateTitle();
+    updateCover();
+    updateDescription();
+    updateMetaInfo()
+
+    updateItemTopics();
+    updateLinks();
+    updateProfileTopics();
+}
+
+function getRatingsForAPI(){
+    output = {"movies" : ratings["movies"].map(entry => [entry[0].id, entry[1]]),
+        "books" : ratings["books"].map(entry => [entry[0].id, entry[1]])}
+    return output;
+}
+
+function nextItem() {
+    updateState(LOADING_STATE);
+    let address = "";
+    if (domain == MOVIE_DOMAIN) {
+        address = SERVER_ADDRESS + "/movie_recs";
+    }else{
+        address = SERVER_ADDRESS + "/book_recs";
+    }
+
+    const dataToPass = JSON.stringify(getRatingsForAPI());
+
+    const successFunction = function (resp) {
+        data = jQuery.parseJSON(jQuery.parseJSON(resp))
+
+        item = new Item(domain, data['item'], data['item_topics']);
+        profileTopics = Util.retrieveArray(data['profile_topics']["tag"]);
+        profileTopics.sort();
+
+        updateItemInfo();
+        if (currentState === LOADING_STATE){ // in case the user has already switched to another state, such as HISTORY_STATE
+            updateState(RECOMMENDATION_STATE);
+        }
+    }
+
+    Util.sendRequest(address, dataToPass, successFunction);
+}
+
+function setDomain(newDomain) {
+    if (newDomain === MOVIE_DOMAIN) {
+        $('#movies_radio').prop('checked',true);
+    } else {
+        $('#books_radio').prop('checked',true);
+    }
+    domain = newDomain;
+    updateSearchField();
+}
+
+function updateItemById(id, currentDomain) {
+    updateState(LOADING_STATE);
+    let address = "";
+    if (currentDomain == MOVIE_DOMAIN) {
+        address = SERVER_ADDRESS + "/movie";
+    }else{
+        address = SERVER_ADDRESS + "/book";
+    }
+
+    const dataToPass = JSON.stringify(id);
+
+    const successFunction = function (resp) {
+        data = jQuery.parseJSON(jQuery.parseJSON(resp))
+
+        item = new Item(domain, data['item'], data['item_topics']);
+
+        updateItemInfo();
+        if (currentState === LOADING_STATE){ // in case the user has already switched to another state, such as HISTORY_STATE
+            updateState(RECOMMENDATION_STATE);
+        }
+    }
+
+    Util.sendRequest(address, dataToPass, successFunction);
+}
+
+$(document).ready(function () {
+    //nextItem();
+    updateState(INIT_STATE);
+    //updateState(LOADING_STATE);
+});
+
+function makeListItem(item, rating, type, itemDomain) {
+    let itemToDisplay = $('<div class="item_list_container"></div>');
+    itemToDisplay.append('<div width="80px"><img src="' + item.cover + '" width="80px"></div>');
+    let metaInfo = $('<div class="item_list_info_container"></div>');
+    let title = $('<div><span class="movie_title">'+ item.title +'</span><span class="meta_info"> ('+getMetaInfo(itemDomain, item)+')</span></div>');
+    metaInfo.append(title);
+    metaInfo.append('<span><b>Movie key topics:</b> <i><span>' + Util.arrayToString(item.topics) + '</span></i></span><br>');
+    metaInfo.append('<span>' + getDescription(item) + '</span><br>');
+    itemToDisplay.append(metaInfo);
+    var selectButton = $("<button class='select_button'>Select</button>");
+    selectButton.click(function(){
+        setDomain(itemDomain);
+        updateItemById(item.id, itemDomain);
+    });
+    metaInfo.append(selectButton);
+    if (type === "history") {
+        var removeButton = $("<button class=\"error\">Remove</button><br>");
+        removeButton.click(function(){
+            if (itemDomain === MOVIE_DOMAIN) {
+                ratings[MOVIE_DOMAIN] = ratings[MOVIE_DOMAIN].filter(item1 => item1[0].id !== item.id);
+            } else {
+                ratings[BOOK_DOMAIN] = ratings[BOOK_DOMAIN].filter(item1 => item1[0].id !== item.id);
+            }
+            userVectorChanged = true;
+            seeHistory();
+        });
+        metaInfo.append(removeButton);
+
+        if (rating > 0) {
+            title.append('<span class="feedback_info_more"> [More like this]</span>');
+        } else {
+            title.append('<span class="feedback_info_less"> [Less like this]</span>');
+        }
+    } else {
+        var removeButton = $("<button  class=\"error\">Remove</button><br>");
+        removeButton.click(function(){
+            if (itemDomain === MOVIE_DOMAIN) {
+                savedItems[MOVIE_DOMAIN] = savedItems[MOVIE_DOMAIN].filter(item1 => item1.id !== item.id);
+            } else {
+                savedItems[BOOK_DOMAIN] = savedItems[BOOK_DOMAIN].filter(item1 => item1.id !== item.id);
+            }
+            seeSaved();
+        });
+        metaInfo.append(removeButton);
+    }
+    return itemToDisplay;
+}
+
+function seeHistory(){
+    $("#movieHistory").empty();
+    ratings["movies"].forEach((entry, index) => {
+        $("#movieHistory").prepend(makeListItem(entry[0], entry[1], "history", MOVIE_DOMAIN));
+    });
+
+    $("#bookHistory").empty();
+    ratings["books"].forEach((entry, index) => {
+        $("#bookHistory").prepend(makeListItem(entry[0], entry[1], "history", BOOK_DOMAIN));
+    });
+
+    updateState(HISTORY_STATE);
+}
+
+function seeSaved(){
+    $("#movieSaved").empty();
+    savedItems["movies"].forEach((entry, index) => {
+        $("#movieSaved").prepend(makeListItem(entry, null, "saved", MOVIE_DOMAIN));
+    });
+
+    $("#bookSaved").empty();
+    savedItems["books"].forEach((entry, index) => {
+        $("#bookSaved").prepend(makeListItem(entry, null, "saved", BOOK_DOMAIN));
+    });
+
+    updateState(SAVED_STATE);
+}
+
+function seeRecs(){
+    if (userVectorChanged && !areRatingsEmpty()) {
+      nextItem();
+      userVectorChanged = false;
+    } else {
+        if (item === null) {
+            updateState(INIT_STATE);
+        } else {
+            updateState(RECOMMENDATION_STATE);
+        }
+    }
+}
+
+function updateState(state) {
+    currentState = state;
+    switch(currentState) {
+      case INIT_STATE:
+        $('#init_panel').show();
+        $('#recommendation').hide();
+        $('#history').hide();
+        $('#saved').hide();
+        $('#search_panel').show();
+        $('#upper_panel').show();
+        $('#empty_saved_message').hide();
+        $('#empty_history_message').hide();
+        $('#movie_book_switch').show();
+        $('#see_recs').hide();
+        $('#loading').hide();
+        $('#search_panel').show();
+        break;
+      case LOADING_STATE:
+        $('#loading').show();
+      break;
+      case RECOMMENDATION_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').show();
+        $('#history').hide();
+        $('#saved').hide();
+        $('#search_panel').show();
+        $('#upper_panel').show();
+        $('#empty_saved_message').hide();
+        $('#empty_history_message').hide();
+        $('#movie_book_switch').show();
+        $('#see_recs').hide();
+        $('#loading').hide();
+        $('#search_panel').show();
+        $('#recs_tab').prop('checked',true);
+        break;
+      case HISTORY_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').hide();
+        $('#history').show();
+        $('#saved').hide();
+        $('#search_panel').hide();
+        $('#upper_panel').show();
+        $('#empty_saved_message').hide();
+        if (areRatingsEmpty()) {
+            $('#empty_history_message').show();
+        } else {
+            $('#empty_history_message').hide();
+        }
+        $('#movie_book_switch').hide();
+        $('#see_recs').show();
+        $('#loading').hide();
+        $('#search_panel').hide();
+        $('#history_tab').prop('checked',true);
+        break;
+      case SAVED_STATE:
+        $('#init_panel').hide();
+        $('#recommendation').hide();
+        $('#history').hide();
+        $('#saved').show();
+        $('#search_panel').hide();
+        $('#upper_panel').show();
+        $('#empty_history_message').hide();
+        if (savedItems["movies"].length === 0 && savedItems["books"].length === 0) {
+            $('#empty_saved_message').show();
+        } else {
+            $('#empty_saved_message').hide();
+        }
+        $('#movie_book_switch').hide();
+        $('#see_recs').show();
+        $('#loading').hide();
+        $('#search_panel').hide();
+        $('#save_tab').prop('checked',true);
+        break;
+      default:
+        console.log("def");
+    }
+
+    updateListButtons();
+}
+
+</script>
+</head>
+<body>
+
+<div id="loading" class="loading" width="100%">
+    <span>Loading...</span>
+</div>
+
+<div class="pure-g">
+    <div class="with_blue_borders pure-u-1-24 pure-u-sm-1-24 pure-u-md-3-24 pure-u-lg-5-24"></div>
+
+    <div class="with_red_borders with_margins_paddings pure-u-22-24 pure-u-sm-22-24 pure-u-md-18-24 pure-u-lg-14-24">
+
+<div id="upper_panel">
+    <input id='recs_tab' type='radio' name='tabgroupB' onclick="seeRecs()" id="see_recs" checked />
+    <label class="pseudo button toggle" for="recs_tab">Top Pick</label>
+    <input id='history_tab' type='radio' name='tabgroupB' onclick="seeHistory()">
+    <label class="pseudo button toggle" for="history_tab" id="historyButton">History (0)</label>
+    <input id='save_tab' type='radio' name='tabgroupB' onclick="seeSaved()">
+    <label class="pseudo button toggle" for="save_tab" id="savedButton">Bookmarked (0)</label>
+    <a href="https://github.com/Bionic1251/book_cine" class='link' target="_blank">About</a>
+
+    <p id="empty_history_message">You do not have a history of interactions with movies or books in this system yet.</p>
+    <p id="empty_saved_message">You have not bookmarked any movies or books in this system.</p>
+</div>
+
+<div id="movie_book_switch">
+    <input type="radio" id="movies_radio" name="domain" value="movies" onchange="updateDomain('movies')" checked>
+    <label for="movies_radio" class="checkable">Movies</label>
+    <input type="radio" id="books_radio" name="domain" value="books" onchange="updateDomain('books')">
+    <label for="books_radio" class="checkable">Books</label>
+</div>
+
+<div id="init_panel">
+    <p>
+  This system helps you discover movies and books that are <strong>similar</strong> to the ones you choose.
+  For example, if you're searching for a movie about fantasy adventures, you could start by selecting any of The Lord of the Rings movies. You can also choose any of The Lord of the Rings books—the system works
+        <strong>across both books and movies.</strong>
+</p>
+
+</div>
+        
+<div id="search_panel">
+    <fieldset class="flex two">
+      <input placeholder="Movie title" id="movieTitles" class="input_with_size" onkeypress="pressedKey(event)">
+        <input placeholder="Book title" id="bookTitles" class="input_with_size" onkeypress="pressedKey(event)">
+      <button class="button_with_size" onclick="chooseItem()">Choose</button>
+    </fieldset>
+</div>
+
+<div id="recommendation">
+    <span id="profile_topcs_description"><b>Your key topics:</b> <i><span id="profile_topics"></span></i></span> <a class="button error restart_button" onclick="reset()">Start again</a><br>
+    <div class="with_green_borders info_container">
+        <span class="movie_title" id="title"></span><br>
+        <span id="meta_info" class="meta_info"></span>
+        <br>
+        <div id="cover"></div>
+    </div>
+
+    <span id="item_topics"></span><br>
+    <span><b>Links: </b><span id="links"></span></span><br>
+    <div class="description">
+        <span><b>Description: </b></span><div id="description"></div><br>
+    </div>
+
+    <div class="with_green_borders info_container">
+        <button class="warning" onclick="lessLikeThis()">Less like this</button>
+        <button onclick="saveItem()">Bookmark</button>
+        <button class='success' onclick="moreLikeThis()">More like this</button>
+    </div>
+</div>
+
+<div id="history">
+    <span class="item_type">Movies</span>
+    <div id="movieHistory"></div>
+    <span class="item_type">Books</span>
+    <div id="bookHistory"></div>
+</div>
+
+<div id="saved">
+    <span class="item_type">Movies</span>
+    <div id="movieSaved"></div>
+    <span class="item_type">Books</span>
+    <div id="bookSaved"></div>
+</div>
+
+</div>
+</div>
+</body>
+</html>
