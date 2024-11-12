@@ -27,6 +27,7 @@ const INIT_STATE = "init";
 const RECOMMENDATION_STATE = "recommendation";
 const HISTORY_STATE = "history";
 const SAVED_STATE = "saved";
+const LOADING_STATE = "loading";
 
 // constants
 const BOOK_DOMAIN = "books";
@@ -110,7 +111,6 @@ function chooseItem() {
         alert("Sorry, we do not have this movie or book.")
     } else {
         updateItemById(id, domain);
-        updateState(RECOMMENDATION_STATE);
     }
 }
 
@@ -246,10 +246,9 @@ function updateDescription() {
 }
 
 function updateCover() {
-    if (item === null) {
-        $('#cover').attr("src", "");
-    } else {
-        $('#cover').attr("src", item.cover);
+    $('#cover').empty();
+    if (item !== null) {
+        $('#cover').append("<img src=\""+item.cover+"\" width=\"150px\" />");
     }
 }
 
@@ -281,6 +280,7 @@ function getRatingsForAPI(){
 }
 
 function nextItem() {
+    updateState(LOADING_STATE);
     let address = "";
     if (domain == MOVIE_DOMAIN) {
         address = SERVER_ADDRESS + "/movie_recs";
@@ -298,7 +298,9 @@ function nextItem() {
         profileTopics.sort();
 
         updateItemInfo();
-        updateState(RECOMMENDATION_STATE);
+        if (currentState === LOADING_STATE){ // in case the user has already switched to another state, such as HISTORY_STATE
+            updateState(RECOMMENDATION_STATE);
+        }
     }
 
     Util.sendRequest(address, dataToPass, successFunction);
@@ -315,6 +317,7 @@ function setDomain(newDomain) {
 }
 
 function updateItemById(id, currentDomain) {
+    updateState(LOADING_STATE);
     let address = "";
     if (currentDomain == MOVIE_DOMAIN) {
         address = SERVER_ADDRESS + "/movie";
@@ -330,6 +333,9 @@ function updateItemById(id, currentDomain) {
         item = new Item(domain, data['item'], data['item_topics']);
 
         updateItemInfo();
+        if (currentState === LOADING_STATE){ // in case the user has already switched to another state, such as HISTORY_STATE
+            updateState(RECOMMENDATION_STATE);
+        }
     }
 
     Util.sendRequest(address, dataToPass, successFunction);
@@ -338,6 +344,7 @@ function updateItemById(id, currentDomain) {
 $(document).ready(function () {
     //nextItem();
     updateState(INIT_STATE);
+    //updateState(LOADING_STATE);
 });
 
 function makeListItem(item, rating, type, itemDomain) {
@@ -353,7 +360,6 @@ function makeListItem(item, rating, type, itemDomain) {
     selectButton.click(function(){
         setDomain(itemDomain);
         updateItemById(item.id, itemDomain);
-        updateState(RECOMMENDATION_STATE);
     });
     metaInfo.append(selectButton);
     if (type === "history") {
@@ -444,8 +450,12 @@ function updateState(state) {
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
+        $('#loading').hide();
         $('#search_panel').show();
         break;
+      case LOADING_STATE:
+        $('#loading').show();
+      break;
       case RECOMMENDATION_STATE:
         $('#init_panel').hide();
         $('#recommendation').show();
@@ -457,6 +467,7 @@ function updateState(state) {
         $('#empty_history_message').hide();
         $('#movie_book_switch').show();
         $('#see_recs').hide();
+        $('#loading').hide();
         $('#search_panel').show();
         $('#recs_tab').prop('checked',true);
         break;
@@ -475,6 +486,7 @@ function updateState(state) {
         }
         $('#movie_book_switch').hide();
         $('#see_recs').show();
+        $('#loading').hide();
         $('#search_panel').hide();
         $('#history_tab').prop('checked',true);
         break;
@@ -493,6 +505,7 @@ function updateState(state) {
         }
         $('#movie_book_switch').hide();
         $('#see_recs').show();
+        $('#loading').hide();
         $('#search_panel').hide();
         $('#save_tab').prop('checked',true);
         break;
@@ -506,6 +519,10 @@ function updateState(state) {
 </script>
 </head>
 <body>
+
+<div id="loading" class="loading" width="100%">
+    <span>Loading...</span>
+</div>
 
 <div class="pure-g">
     <div class="with_blue_borders pure-u-1-24 pure-u-sm-1-24 pure-u-md-3-24 pure-u-lg-5-24"></div>
@@ -555,7 +572,7 @@ function updateState(state) {
         <span class="movie_title" id="title"></span><br>
         <span id="meta_info" class="meta_info"></span>
         <br>
-        <img id="cover" width="150px"><br>
+        <div id="cover"></div>
     </div>
 
     <span id="item_topics"></span><br>
